@@ -13,11 +13,10 @@ import tempfile
 
 my_api_key = st.sidebar.text_input("Enter your OpenAI API Key:", type="password")
 
-llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=my_api_key)
-
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small", openai_api_key=my_api_key)
-
-vector_store = InMemoryVectorStore(embeddings)
+if my_api_key:
+    llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=my_api_key)
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small", openai_api_key=my_api_key)
+    vector_store = InMemoryVectorStore(embeddings)
 
 # Initialize an empty list to store the uploaded files
 uploaded_files = []
