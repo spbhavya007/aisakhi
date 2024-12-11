@@ -11,9 +11,11 @@ from typing_extensions import List, TypedDict
 import streamlit as st
 import tempfile
 
-llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key="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")
+my_api_key = st.sidebar.text_input("Enter your OpenAI API Key:", type="password")
 
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small", openai_api_key="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")
+llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=my_api_key)
+
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small", openai_api_key=my_api_key)
 
 vector_store = InMemoryVectorStore(embeddings)
 
