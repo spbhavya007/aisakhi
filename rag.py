@@ -15,7 +15,7 @@ import sounddevice as sd
 import numpy as np
 import speech_recognition as sr
 #import pyttsx3
-from google.cloud import texttospeech
+#from google.cloud import texttospeech
 import base64
 from gtts import gTTS
 
