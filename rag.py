@@ -11,6 +11,26 @@ from typing_extensions import List, TypedDict
 import streamlit as st
 import tempfile
 
+import speech_recognition as sr
+import pyttsx3
+
+# Function to capture and transcribe speech
+def get_speech_input():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("Listening... Speak now.")
+        try:
+            audio = recognizer.listen(source, timeout=5)
+            st.success("Processing your input...")
+            return recognizer.recognize_google(audio)
+        except sr.WaitTimeoutError:
+            st.error("No speech detected. Please try again.")
+        except sr.UnknownValueError:
+            st.error("Speech not recognized. Please speak clearly.")
+        except sr.RequestError as e:
+            st.error(f"Error with the speech recognition service: {e}")
+    return ""
+
 my_api_key = st.sidebar.text_input("Enter your OpenAI API Key:", type="password")
 
 if my_api_key:
@@ -111,6 +131,9 @@ st.markdown("##### Collection Summary")
 num_docs = len(uploaded_files)  # Number of documents in the collection
 st.write(f"Total documents in the collection: {num_docs}")
 
+# Initialize the text-to-speech engine
+tts_engine = pyttsx3.init()
+
 # Initialize chat state in Streamlit
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -119,6 +142,25 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+
+if st.button("🎤 Speak"):
+    user_prompt = get_speech_input()
+    # Add user input to chat
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
+    with st.chat_message("user"):
+        st.markdown(user_prompt)
+    
+    # Process user input through the graph
+    response = graph.invoke({"question": user_prompt})
+    assistant_response = response["answer"]
+
+    # Add assistant's response to chat
+    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+    with st.chat_message("assistant"):
+        st.markdown(assistant_response)
+    # Convert the bot's response to speech
+    tts_engine.say(assistant_response)
+    tts_engine.runAndWait()
 
 # Chat input from user
 if user_prompt := st.chat_input("Ask a question specific to women's health"):
