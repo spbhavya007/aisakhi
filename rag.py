@@ -14,10 +14,15 @@ import tempfile
 import sounddevice as sd
 import numpy as np
 import speech_recognition as sr
-import pyttsx3
+#import pyttsx3
+from google.cloud import texttospeech
+import base64
+from gtts import gTTS
 
 from scipy.io.wavfile import write
 import io
+from io import BytesIO
+
 
 # Function to capture and transcribe speech
 def record_audio(duration=5, samplerate=44100):
@@ -160,7 +165,7 @@ num_docs = len(uploaded_files)  # Number of documents in the collection
 st.write(f"Total documents in the collection: {num_docs}")
 
 # Initialize the text-to-speech engine
-tts_engine = pyttsx3.init()
+#tts_engine = pyttsx3.init()
 
 # Initialize chat state in Streamlit
 if "messages" not in st.session_state:
@@ -191,8 +196,22 @@ if st.button("🎤 Speak"):
     with st.chat_message("assistant"):
         st.markdown(assistant_response)
     # Convert the bot's response to speech
-    tts_engine.say(assistant_response)
-    tts_engine.runAndWait()
+    sound_file = BytesIO()
+    tts = gTTS(assistant_response, lang='en')
+    tts.write_to_fp(sound_file)
+    # Convert audio to base64 for embedding in Streamlit
+    audio_base64 = base64.b64encode(sound_file.getvalue()).decode("utf-8")
+    audio_html = f"""
+        <audio controls autoplay>
+            <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+            Your browser does not support the audio element.
+        </audio>
+    """
+    st.markdown(audio_html, unsafe_allow_html=True)
+
+    #tts_engine.say(assistant_response)
+    #tts_engine.runAndWait()
+
 
 # Chat input from user
 if user_prompt := st.chat_input("Ask a question specific to women's health"):
