@@ -11,10 +11,38 @@ from typing_extensions import List, TypedDict
 import streamlit as st
 import tempfile
 
+import sounddevice as sd
+import numpy as np
 import speech_recognition as sr
 import pyttsx3
 
+from scipy.io.wavfile import write
+import io
+
 # Function to capture and transcribe speech
+def record_audio(duration=5, samplerate=44100):
+    # Record audio using sounddevice
+    print("Recording... Speak now!")
+    st.info("Listening... Speak now.")
+    audio = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype='int16')
+    sd.wait()  # Wait for the recording to finish
+    print("Recording complete.")
+    return np.squeeze(audio)
+
+def process_audio(audio_data, samplerate=44100):
+    # Convert NumPy audio data to AudioData for recognition."""
+    # Save the audio as a WAV file in memory
+    wav_io = io.BytesIO()
+    write(wav_io, samplerate, audio_data)
+    wav_io.seek(0)
+    # Use SpeechRecognition to process the audio
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(wav_io) as source:
+        print("Recognizing...")
+        audio = recognizer.record(source)
+        return recognizer.recognize_google(audio)
+
+
 def get_speech_input():
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
@@ -144,7 +172,11 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 if st.button("🎤 Speak"):
-    user_prompt = get_speech_input()
+    audio = record_audio()
+    user_prompt = process_audio(audio)
+    # st.success(f"You said: {user_input}")
+    # user_prompt = get_speech_input()
+
     # Add user input to chat
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     with st.chat_message("user"):
