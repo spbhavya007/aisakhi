@@ -90,4 +90,7 @@ typing_extensions==4.12.2
 tzdata==2024.2
 urllib3==2.2.3
 yarl==1.18.3
-gtts
+google-cloud-speech
+google-cloud-texttospeech
+google-auth
+google-auth-oauthlib
