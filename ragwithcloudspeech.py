@@ -39,14 +39,14 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-credentials.json"
 
 # Function to record audio (for community cloud deployment)
 # Custom audio processor to capture audio
-class AudioProcessor(AudioProcessorBase):
-    def __init__(self):
-        self.audio_data = None
-
-    def recv(self, frame):
-        # Process audio frame
-        self.audio_data = frame.to_ndarray()  # Store audio data for later use
-        return frame
+#class AudioProcessor(AudioProcessorBase):
+#    def __init__(self):
+#        self.audio_data = None
+#
+#    def recv(self, frame):
+#        # Process audio frame
+#        self.audio_data = frame.to_ndarray()  # Store audio data for later use
+#        return frame
 
 # Function to record audio (for local deployment)
 def record_audio(duration=5, samplerate=44100):
