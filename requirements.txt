@@ -95,5 +95,6 @@ google-cloud-texttospeech
 google-auth
 google-auth-oauthlib
 pydub
+st_audiorec
 
 
