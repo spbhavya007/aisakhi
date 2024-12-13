@@ -94,3 +94,6 @@ google-cloud-speech
 google-cloud-texttospeech
 google-auth
 google-auth-oauthlib
+pydub
+
+

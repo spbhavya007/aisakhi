@@ -18,6 +18,11 @@ from scipy.io.wavfile import write
 import io
 import base64
 import os
+# from streamlit_mic_recorder import mic_recorder
+from streamlit_webrtc import webrtc_streamer, AudioProcessorBase
+from st_audiorec import st_audiorec
+from pydub import AudioSegment
+
 
 # Google Cloud credentials
 
@@ -32,8 +37,19 @@ with open("google-credentials.json", "w") as f:
 # Set GOOGLE_APPLICATION_CREDENTIALS environment variable to the file path
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-credentials.json"
 
-# Function to record audio
-def record_audio(duration=10, samplerate=44100):
+# Function to record audio (for community cloud deployment)
+# Custom audio processor to capture audio
+class AudioProcessor(AudioProcessorBase):
+    def __init__(self):
+        self.audio_data = None
+
+    def recv(self, frame):
+        # Process audio frame
+        self.audio_data = frame.to_ndarray()  # Store audio data for later use
+        return frame
+
+# Function to record audio (for local deployment)
+def record_audio(duration=5, samplerate=44100):
     print("Recording... Speak now!")
     st.info("Listening... Speak now.")
     audio = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype='int16')
@@ -44,14 +60,25 @@ def record_audio(duration=10, samplerate=44100):
 # Function to transcribe speech using Google Cloud Speech-to-Text
 def transcribe_audio(audio_data, samplerate=44100):
     client = speech.SpeechClient()
-    wav_io = io.BytesIO()
-    write(wav_io, samplerate, audio_data)
-    wav_io.seek(0)
+    #wav_io = io.BytesIO()
+    #write(wav_io, samplerate, audio_data)
+    #wav_io.seek(0)
     
-    audio = speech.RecognitionAudio(content=wav_io.read())
+    # Convert byte data to an AudioSegment
+    audio_segment = AudioSegment.from_file(io.BytesIO(audio_data), format="wav")
+    # Convert to mono
+    audio_segment = audio_segment.set_channels(1)
+    # Export the mono audio as a byte stream
+    mono_audio = io.BytesIO()
+    audio_segment.export(mono_audio, format="wav")
+    mono_audio.seek(0)
+
+    #audio = speech.RecognitionAudio(content=wav_io.read())
+    #audio = speech.RecognitionAudio(content=audio_data)
+    audio = speech.RecognitionAudio(content=mono_audio.read())
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=samplerate,
+        #sample_rate_hertz=samplerate,
         language_code="en-US",
     )
     response = client.recognize(config=config, audio=audio)
@@ -61,6 +88,7 @@ def transcribe_audio(audio_data, samplerate=44100):
     else:
         st.error("No speech detected or transcription failed.")
         return ""
+
 
 # Function to generate speech using Google Cloud Text-to-Speech
 def synthesize_speech(text):
@@ -148,9 +176,30 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if st.button("🎤 Speak"):
-    audio = record_audio()
-    user_prompt = transcribe_audio(audio)
+# Streamlit WebRTC to capture audio
+# audio_processor = AudioProcessor()
+
+#webrtc_streamer(
+#    key="audio-capture",
+#    audio_processor_factory=lambda: audio_processor,
+#    media_stream_constraints={"audio": True, "video": False}  # Only audio
+#)
+
+#if st.button("🎤 Speak"):
+#if audio_processor.audio_data is not None:
+
+wav_audio_data = st_audiorec() # tadaaaa! yes, that's it! :D
+if wav_audio_data is not None:
+
+    #audio = record_audio()
+
+    #print("audio processor got something!")
+    #user_prompt = transcribe_audio(audio_processor.audio_data)
+    #print("prompt was: "+user_prompt)
+
+    user_prompt = transcribe_audio(wav_audio_data)
+    print("prompt was: "+user_prompt)
+
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     with st.chat_message("user"):
         st.markdown(user_prompt)
@@ -160,7 +209,7 @@ if st.button("🎤 Speak"):
     st.session_state.messages.append({"role": "assistant", "content": assistant_response})
     with st.chat_message("assistant"):
         st.markdown(assistant_response)
-    
+
     audio_content = synthesize_speech(assistant_response)
     # st.audio(audio_content, format="audio/mp3")
 
