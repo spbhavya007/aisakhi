@@ -96,5 +96,6 @@ google-auth
 google-auth-oauthlib
 pydub
 streamlit-audiorec
+google-cloud-translate
 
 

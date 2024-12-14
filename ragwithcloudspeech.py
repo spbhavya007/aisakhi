@@ -1,5 +1,6 @@
 from google.cloud import speech
 from google.cloud import texttospeech
+from google.cloud import translate
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.vectorstores import InMemoryVectorStore
@@ -37,6 +38,9 @@ with open("google-credentials.json", "w") as f:
 # Set GOOGLE_APPLICATION_CREDENTIALS environment variable to the file path
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-credentials.json"
 
+speech_client = speech.SpeechClient()
+translate_client = translate.TranslationServiceClient()
+
 # Function to record audio (for community cloud deployment)
 # Custom audio processor to capture audio
 #class AudioProcessor(AudioProcessorBase):
@@ -58,8 +62,7 @@ def record_audio(duration=5, samplerate=44100):
     return np.squeeze(audio)
 
 # Function to transcribe speech using Google Cloud Speech-to-Text
-def transcribe_audio(audio_data, samplerate=44100):
-    client = speech.SpeechClient()
+def transcribe_audio(audio_data, lang_code):
     #wav_io = io.BytesIO()
     #write(wav_io, samplerate, audio_data)
     #wav_io.seek(0)
@@ -79,9 +82,9 @@ def transcribe_audio(audio_data, samplerate=44100):
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
         #sample_rate_hertz=samplerate,
-        language_code="en-US",
+        language_code=lang_code,
     )
-    response = client.recognize(config=config, audio=audio)
+    response = speech_client.recognize(config=config, audio=audio)
     
     if response.results:
         return response.results[0].alternatives[0].transcript
@@ -89,13 +92,22 @@ def transcribe_audio(audio_data, samplerate=44100):
         st.error("No speech detected or transcription failed.")
         return ""
 
+# Translate the transcribed text to English
+def translate_text(text, target_language="en"):  # Target language: English
+    parent = f"projects/aisakhi/locations/global"
+    response = translate_client.translate_text(
+        contents=[text],
+        target_language_code=target_language,
+        parent=parent,
+    )
+    return response.translations[0].translated_text
 
 # Function to generate speech using Google Cloud Text-to-Speech
-def synthesize_speech(text):
+def synthesize_speech(text, language_code, ssml_gender=texttospeech.SsmlVoiceGender.FEMALE):
     client = texttospeech.TextToSpeechClient()
     input_text = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(
-        language_code="en-US", ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
+        language_code=language_code, ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
     )
     audio_config = texttospeech.AudioConfig(
         audio_encoding=texttospeech.AudioEncoding.MP3
@@ -188,7 +200,7 @@ for message in st.session_state.messages:
 #if st.button("🎤 Speak"):
 #if audio_processor.audio_data is not None:
 
-wav_audio_data = st_audiorec() # tadaaaa! yes, that's it! :D
+wav_audio_data = st_audiorec()
 if wav_audio_data is not None:
 
     #audio = record_audio()
@@ -197,7 +209,17 @@ if wav_audio_data is not None:
     #user_prompt = transcribe_audio(audio_processor.audio_data)
     #print("prompt was: "+user_prompt)
 
-    user_prompt = transcribe_audio(wav_audio_data)
+    # user_prompt = transcribe_audio(wav_audio_data,language_code="hi-IN")
+    # Transcribe the audio
+    transcription = transcribe_audio(wav_audio_data, lang_code="hi-IN")
+    if transcription:
+        print(f"Transcription: {transcription}")
+        # Translate the transcription to English
+        user_prompt = translate_text(transcription, target_language="en")
+        print(f"Translation: {user_prompt}")
+    else:
+        print("No speech detected or transcription failed.")
+    
     print("prompt was: "+user_prompt)
 
     st.session_state.messages.append({"role": "user", "content": user_prompt})
@@ -210,7 +232,8 @@ if wav_audio_data is not None:
     with st.chat_message("assistant"):
         st.markdown(assistant_response)
 
-    audio_content = synthesize_speech(assistant_response)
+    transated_assistant_response = translate_text(assistant_response, target_language="hi")
+    audio_content = synthesize_speech(transated_assistant_response, language_code="hi-IN")
     # st.audio(audio_content, format="audio/mp3")
 
     # Embed the audio content as base64 and use autoplay in the HTML
